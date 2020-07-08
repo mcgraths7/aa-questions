@@ -25,11 +25,11 @@ CREATE TABLE replies (
   body TEXT NOT NULL,
   user_id INTEGER NOT NULL,
   question_id INTEGER NOT NULL,
-  reply_id INTEGER,
+  parent_reply_id INTEGER,
 
   FOREIGN KEY (user_id) REFERENCES users(id),
   FOREIGN KEY (question_id) REFERENCES questions(id)
-  FOREIGN KEY (reply_id) REFERENCES replies(id)
+  FOREIGN KEY (parent_reply_id) REFERENCES replies(id)
 );
 
 CREATE TABLE question_follows (
@@ -84,10 +84,50 @@ VALUES
     WHERE fname = 'Steven' AND lname = 'McGrath'));
 
 INSERT INTO
-  replies (body, user_id, question_id, reply_id)
+  replies (body, user_id, question_id, parent_reply_id)
 VALUES
   ('Shut up, nerd!', 3, 1, NULL),
   ('What do you mean? An African or European swallow?', 1, 2, NULL),
   ('What, I don''t know th... AAAAGGGGHHHH!!!', 2, 2, 2),
   ('African of course!', 3, 2, 2),
   ('No you fool, it''s European!', 1, 2, 4);
+
+-- Users
+-- id          fname       lname       is_instructor
+-- ----------  ----------  ----------  -------------
+-- 1           Steven      McGrath     0
+-- 2           Anthony     Lagasi      0
+-- 3           Juan        Pol         0
+-- 4           Jeff        Katz        1
+
+-- Questions
+-- id          title                    body          user_id
+-- ----------  -----------------------  ------------  ----------
+-- 1           An interesting title...  Some content  1
+-- 2           What is the airspeed ve  Asking for a  2
+-- 3           What is the capital of   Need help AS  3
+-- 4           How old is Senko?        Asking for a  1
+
+INSERT INTO
+  question_follows (user_id, question_id)
+VALUES
+  (1, 2),
+  (1, 3),
+  (2, 1),
+  (2, 4),
+  (3, 1),
+  (3, 3),
+  (4, 2),
+  (4, 1);
+
+INSERT INTO
+  question_likes (user_id, question_id)
+VALUES
+  (2, 2),
+  (3, 1),
+  (2, 1),
+  (2, 4),
+  (3, 2),
+  (3, 3),
+  (4, 2),
+  (4, 1);

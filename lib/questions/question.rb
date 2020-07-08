@@ -2,39 +2,35 @@
 
 # Represents a single question, associated with a user. Contains a title and
 # a body
-
-# Tasks:
-# Question#replies (use Reply::find_by_question_id)
 class Question
-  attr_accessor :id, :title, :body, :user_id
+  attr_reader :id, :title, :user_id
+  attr_accessor :body
 
   def self.all
     questions = QuestionsDBConnection.instance.execute('SELECT * FROM questions')
-    questions.map do |question_hash|
-      question_params = { id: question_hash['id'], title: question_hash['title'],
-                          body: question_hash['body'], user_id: question_hash['user_id'] }
-      Question.new(question_params)
-    end
+    ModelBuilder.q_builder(questions)
   end
 
   def self.find_by_id(id)
-    question_hash = QuestionsDBConnection.instance.execute(<<-SQL, id)
+    question = QuestionsDBConnection.instance.execute(<<-SQL, id)
       SELECT * FROM questions WHERE id = ?
     SQL
-    question_params = { id: question_hash[0]['id'], title: question_hash[0]['title'],
-                        body: question_hash[0]['body'], user_id: question_hash[0]['user_id'] }
-    Question.new(question_params)
+    ModelBuilder.q_builder(question)
   end
 
   def self.find_by_user_id(user_id)
     questions = QuestionsDBConnection.instance.execute(<<-SQL, user_id)
       SELECT * FROM questions WHERE user_id = ?
     SQL
-    questions.map do |question_hash|
-      question_params = { id: question_hash['id'], title: question_hash['title'],
-                          body: question_hash['body'], user_id: question_hash['user_id'] }
-      Question.new(question_params)
-    end
+    ModelBuilder.q_builder(questions)
+  end
+
+  def self.most_followed(num)
+    QuestionFollow.most_followed_questions(num)
+  end
+
+  def self.most_liked(num)
+    QuestionLike.most_liked_questions(num)
   end
 
   def initialize(params)
@@ -44,17 +40,48 @@ class Question
     @user_id = params[:user_id]
   end
 
+  def create
+    return self if @id
+
+    QuestionsDBConnection.instance.execute(<<-SQL, @title, @body, @user_id)
+      INSERT INTO questions (title, body, user_id) VALUES (?, ?, ?)
+    SQL
+  end
+
+  def update
+    QuestionsDBConnection.instance.execute(<<-SQL, @body, @id)
+      UPDATE questions
+      SET body = ?
+      WHERE id = ?
+    SQL
+  end
+
+  def delete
+    QuestionsDBConnection.instance.execute(<<-SQL, @id)
+      DELETE FROM questions WHERE id = ?
+    SQL
+  end
+
   def author
-    user_hash = QuestionsDBConnection.instance.execute(<<-SQL, @user_id)
+    user = QuestionsDBConnection.instance.execute(<<-SQL, @user_id)
       SELECT * FROM users WHERE id = ?
     SQL
-    is_instructor = user_hash[0]['is_instructor'] == '1'
-    user_params = { id: user_hash[0]['id'], fname: user_hash[0]['fname'],
-                    lname: user_hash[0]['lname'], is_instructor: is_instructor }
-    User.new(user_params)
+    ModelBuilder.u_builder(user)[0]
   end
 
   def replies
     Reply.find_by_question_id(@id)
+  end
+
+  def followers
+    QuestionFollow.followers_for_question_id(@id)
+  end
+
+  def likers
+    QuestionLike.likers_for_question_id(@id)
+  end
+
+  def num_likes
+    QuestionLike.num_likes_for_question_id(@id)
   end
 end
